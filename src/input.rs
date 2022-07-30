@@ -1,3 +1,4 @@
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, error::Error, str::FromStr};
 
@@ -202,6 +203,40 @@ pub fn add_input(input: &str, languages: &mut Languages) -> bool {
 
 fn convert_input(contents: &str) -> Option<LanguageMap> {
     self::Format::parse(contents)
+}
+
+pub fn get_repo_dl_path(input: &[&str]) -> Result<Vec<(String, String)>, ()> {
+    let git_repo_paths: Vec<_> = input
+        .into_iter()
+        .filter(|uri| uri.contains("git:") || uri.contains("github.com"))
+        .map(|repo| format!("/tmp/tokei/{}",
+        repo.split("/").collect::<Vec<&str>>().into_iter().rev().collect::<Vec<&str>>()[..2].join("__")
+    ))
+        .zip(
+            input
+                .into_iter()
+                .map(|uri| uri.to_string())
+                .collect::<Vec<String>>(),
+        )
+        .collect();
+
+    if git_repo_paths.len() == 0 {
+        return Err(());
+    }
+
+    git_repo_paths.iter().for_each(|(repo, uri)| {
+        std::fs::create_dir_all(std::path::Path::new(repo))
+            .expect("Cannot create directory for downloading repo associated with {uri}");
+    });
+
+    Ok(git_repo_paths)
+    // Reqwest Solution - SOLUTION 2
+    // let branch = if branch.is_empty() { "master" } else { branch };
+
+    // match input.split("/").collect::<Vec<&str>>().into_iter().rev().collect::<Vec<&str>>()[..2] {
+    //     [repo, user] => Ok(format!("https://github.com/{user}/{repo}/archive/{branch}")),
+    //     _ => Err("Cannot retreive github repository".to_string()),
+    // }
 }
 
 #[cfg(test)]

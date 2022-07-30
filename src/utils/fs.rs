@@ -5,8 +5,7 @@ use ignore::{overrides::OverrideBuilder, DirEntry, WalkBuilder, WalkState::Conti
 use rayon::prelude::*;
 
 use crate::{
-    config::Config,
-    language::{Language, LanguageType},
+    Config, Language, LanguageType,
 };
 
 const IGNORE_FILE: &str = ".tokeignore";
