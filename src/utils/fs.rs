@@ -131,8 +131,7 @@ mod tests {
 
     use super::IGNORE_FILE;
     use crate::{
-        config::Config,
-        language::{languages::Languages, LanguageType},
+        Config, Languages, LanguageType,
     };
 
     const FILE_CONTENTS: &[u8] = &*b"fn main() {}";
