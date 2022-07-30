@@ -6,16 +6,19 @@ mod cli_utils;
 mod input;
 mod utils;
 
-use std::{error::Error, process, collections::HashMap, io::Write};
+use std::{error::Error, process, collections::HashMap, io::Write, cell::RefCell, ops::Add, sync::Arc};
 
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use parking_lot::Mutex;
+use rayon::{iter::{IntoParallelRefIterator, ParallelIterator}, vec};
 use tokei::{Config, Languages, Sort, Language, LanguageType};
 use utils::dl::download_repo;
+
+use std::io;
 
 use crate::{
     cli::Cli,
     cli_utils::{Printer, FALLBACK_ROW_LEN},
-    input::{add_input, get_repo_dl_path},
+    input::{add_input, create_repo_dl_path},
 };
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -37,24 +40,34 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let mut input = cli.input();
+    let mut remote_input: Vec<String> = vec![];
 
     let (remote_tx, remote_rx) = crossbeam_channel::unbounded::<(String, String, usize, usize)>();
 
-    if let Ok(paths) = get_repo_dl_path(&input) {
+    if let Ok(paths) = create_repo_dl_path(&input) {
         // paths
         //     .par_iter()
         //     .for_each_with(remote_tx, |sender, (path, uri)| {
         //         download_repo(&path, &uri, sender);
         //     });
 
+        let inputs_to_be_added: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+        
         rayon::scope(|scope| {
-            for (path, uri) in paths {
-                let mut sender = remote_tx.clone();
-                scope.spawn(move |_| {
-                    download_repo(path.as_str(), uri.as_str(), &mut sender);
-                });
-
+            {
+                for (path, uri) in paths {
+                    let mut sender = remote_tx.clone();   
+                    let data = Arc::clone(&inputs_to_be_added);
+                    scope.spawn(move |_| {
+                        download_repo(path.clone().as_str(), uri.as_str(), &mut sender);
+                        let mut i = data.lock();
+                        (*i).push(path);
+                        drop(sender);
+                    });
+                }
             }
+
+            drop(remote_tx);
 
             scope.spawn(move |_| {
                 let mut progress = HashMap::new();
@@ -70,7 +83,14 @@ fn main() -> Result<(), Box<dyn Error>> {
                     (0..lines.len()).for_each(|_| print!("\x1b[1A\x1b[2K"));
                 }
             });
-        })
+        });
+
+        let data = Arc::clone(&inputs_to_be_added);
+        let data = data.lock();
+        
+        for i in (*data).iter() {
+            remote_input.push(i.to_owned());
+        };
 
         // Pass it to lang stat
     } else {
@@ -81,6 +101,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         }
     }
+
+    input.extend(remote_input.iter().map(|item| item.as_str()));
+    input = input.into_iter().filter(|item| !item.contains("github")).collect();
+    println!("debug {:?}", input);
 
     let columns = cli
         .columns
@@ -112,54 +136,54 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
 
-    // languages.get_statistics(&input, &cli.ignored_directories(), &config);
-    // if config.for_each_fn.is_some() {
-    //     process::exit(0);
-    // }
+    languages.get_statistics(&input, &cli.ignored_directories(), &config);
+    if config.for_each_fn.is_some() {
+        process::exit(0);
+    }
 
-    // if let Some(format) = cli.output {
-    //     print!("{}", format.print(&languages).unwrap());
-    //     process::exit(0);
-    // }
+    if let Some(format) = cli.output {
+        print!("{}", format.print(&languages).unwrap());
+        process::exit(0);
+    }
 
-    // let mut printer = Printer::new(
-    //     columns,
-    //     cli.files,
-    //     io::BufWriter::new(io::stdout()),
-    //     cli.number_format,
-    // );
+    let mut printer = Printer::new(
+        columns,
+        cli.files,
+        io::BufWriter::new(io::stdout()),
+        cli.number_format,
+    );
 
-    // if languages.iter().any(|(_, lang)| lang.inaccurate) {
-    //     printer.print_inaccuracy_warning()?;
-    // }
+    if languages.iter().any(|(_, lang)| lang.inaccurate) {
+        printer.print_inaccuracy_warning()?;
+    }
 
-    // printer.print_header()?;
+    printer.print_header()?;
 
-    // if let Some(sort_category) = cli.sort.or(config.sort) {
-    //     for (_, ref mut language) in &mut languages {
-    //         language.sort_by(sort_category);
-    //     }
+    if let Some(sort_category) = cli.sort.or(config.sort) {
+        for (_, ref mut language) in &mut languages {
+            language.sort_by(sort_category);
+        }
 
-    //     let mut languages: Vec<_> = languages.iter().collect();
+        let mut languages: Vec<_> = languages.iter().collect();
 
-    //     match sort_category {
-    //         Sort::Blanks => languages.sort_by(|a, b| b.1.blanks.cmp(&a.1.blanks)),
-    //         Sort::Comments => languages.sort_by(|a, b| b.1.comments.cmp(&a.1.comments)),
-    //         Sort::Code => languages.sort_by(|a, b| b.1.code.cmp(&a.1.code)),
-    //         Sort::Files => languages.sort_by(|a, b| b.1.reports.len().cmp(&a.1.reports.len())),
-    //         Sort::Lines => languages.sort_by(|a, b| b.1.lines().cmp(&a.1.lines())),
-    //     }
+        match sort_category {
+            Sort::Blanks => languages.sort_by(|a, b| b.1.blanks.cmp(&a.1.blanks)),
+            Sort::Comments => languages.sort_by(|a, b| b.1.comments.cmp(&a.1.comments)),
+            Sort::Code => languages.sort_by(|a, b| b.1.code.cmp(&a.1.code)),
+            Sort::Files => languages.sort_by(|a, b| b.1.reports.len().cmp(&a.1.reports.len())),
+            Sort::Lines => languages.sort_by(|a, b| b.1.lines().cmp(&a.1.lines())),
+        }
 
-    //     if cli.sort_reverse {
-    //         printer.print_results(languages.into_iter().rev(), cli.compact)?;
-    //     } else {
-    //         printer.print_results(languages.into_iter(), cli.compact)?;
-    //     }
-    // } else {
-    //     printer.print_results(languages.iter(), cli.compact)?;
-    // }
+        if cli.sort_reverse {
+            printer.print_results(languages.into_iter().rev(), cli.compact)?;
+        } else {
+            printer.print_results(languages.into_iter(), cli.compact)?;
+        }
+    } else {
+        printer.print_results(languages.iter(), cli.compact)?;
+    }
 
-    // printer.print_total(&languages)?;
+    printer.print_total(&languages)?;
 
     Ok(())
 }

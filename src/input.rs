@@ -205,7 +205,7 @@ fn convert_input(contents: &str) -> Option<LanguageMap> {
     self::Format::parse(contents)
 }
 
-pub fn get_repo_dl_path(input: &[&str]) -> Result<Vec<(String, String)>, ()> {
+pub fn create_repo_dl_path(input: &[&str]) -> Result<Vec<(String, String)>, ()> {
     let git_repo_paths: Vec<_> = input
         .into_iter()
         .filter(|uri| uri.contains("git:") || uri.contains("github.com"))
