@@ -53,7 +53,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                 scope.spawn(move |_| {
                     download_repo(path.as_str(), uri.as_str(), &mut sender);
-                    drop(sender);
                 });
             }
 

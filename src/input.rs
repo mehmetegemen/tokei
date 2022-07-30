@@ -240,7 +240,8 @@ pub fn create_repo_dl_path(input: &[&str]) -> Result<Vec<(String, String)>, ()> 
 }
 
 pub fn is_git(uri: &str) -> bool {
-    uri.contains("git:") || uri.contains("https://github.com")
+    // TODO: Check remote repo's validity with libgit
+    uri.contains("git:") || uri.contains("https://github.com") || uri.contains("https://www.github.com")
 }
 
 #[cfg(test)]
