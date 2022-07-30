@@ -6,10 +6,10 @@ mod cli_utils;
 mod input;
 mod utils;
 
-use std::{error::Error, process, collections::HashMap, sync::Arc};
+use std::{collections::HashMap, error::Error, process};
 
-use parking_lot::Mutex;
-use tokei::{Config, Languages, Sort, Language, LanguageType};
+use input::is_git;
+use tokei::{Config, Language, LanguageType, Languages, Sort};
 use utils::{dl::download_repo, print::print_dl_progress};
 
 use std::io;
@@ -39,28 +39,32 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let mut input = cli.input();
-    let mut remote_input: Vec<String> = vec![];
+    let mut remote_inputs: Vec<String> = vec![];
 
     let (remote_tx, remote_rx) = crossbeam_channel::unbounded::<(String, String, usize, usize)>();
 
     if let Ok(paths) = create_repo_dl_path(&input) {
         std::fs::remove_dir_all(std::path::Path::new("/tmp/tokei"))?;
 
-        let inputs_to_be_added: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
-        
         rayon::scope(|scope| {
             for (path, uri) in paths {
-                let mut sender = remote_tx.clone();   
-                let data = Arc::clone(&inputs_to_be_added);
+                let mut sender = remote_tx.clone();
+                remote_inputs.push(path.clone());
 
                 scope.spawn(move |_| {
-                    download_repo(path.clone().as_str(), uri.as_str(), &mut sender);
-                    (*data.lock()).push(path);
+                    download_repo(path.as_str(), uri.as_str(), &mut sender);
                     drop(sender);
                 });
             }
 
             drop(remote_tx);
+
+            input.extend(remote_inputs.iter().map(|a| a.as_str()));
+            input = input
+                .clone()
+                .into_iter()
+                .filter(|item| !is_git(item))
+                .collect();
 
             // Track cloning progress in a separate thread because
             // recv() is blocking
@@ -68,18 +72,11 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let mut progress = HashMap::new();
                 while let Ok((op_code, uri, cur, total)) = remote_rx.recv() {
                     progress.insert(uri, (op_code, cur * 100 / total));
-                    
+
                     print_dl_progress(&progress);
                 }
             });
         });
-
-        let data = Arc::clone(&inputs_to_be_added);
-        let data = data.lock();
-        
-        for i in (*data).iter() {
-            remote_input.push(i.to_owned());
-        };
 
         // Pass it to lang stat
     } else {
@@ -90,9 +87,6 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         }
     }
-
-    input.extend(remote_input.iter().map(|item| item.as_str()));
-    input = input.into_iter().filter(|item| !item.contains("github")).collect();
 
     let columns = cli
         .columns
@@ -122,7 +116,6 @@ fn main() -> Result<(), Box<dyn Error>> {
             (0..12).map(|_| "#").collect::<String>()
         );
     }
-
 
     languages.get_statistics(&input, &cli.ignored_directories(), &config);
     if config.for_each_fn.is_some() {

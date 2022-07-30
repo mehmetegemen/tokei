@@ -208,9 +208,17 @@ pub fn create_repo_dl_path(input: &[&str]) -> Result<Vec<(String, String)>, ()> 
     let git_repo_paths: Vec<_> = input
         .into_iter()
         .filter(|uri| is_git(uri))
-        .map(|repo| format!("/tmp/tokei/{}",
-        repo.split("/").collect::<Vec<&str>>().into_iter().rev().collect::<Vec<&str>>()[..2].join("__")
-    ))
+        .map(|repo| {
+            format!(
+                "/tmp/tokei/{}",
+                repo.split("/")
+                    .collect::<Vec<&str>>()
+                    .into_iter()
+                    .rev()
+                    .collect::<Vec<&str>>()[..2]
+                    .join("__")
+            )
+        })
         .zip(
             input
                 .into_iter()
@@ -231,9 +239,8 @@ pub fn create_repo_dl_path(input: &[&str]) -> Result<Vec<(String, String)>, ()> 
     Ok(git_repo_paths)
 }
 
-fn is_git(uri: &str) -> bool {
-    uri.contains("git:") ||
-    uri.contains("https://github.com")
+pub fn is_git(uri: &str) -> bool {
+    uri.contains("git:") || uri.contains("https://github.com")
 }
 
 #[cfg(test)]
