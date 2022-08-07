@@ -3,11 +3,18 @@ use git2::{
     build::{CheckoutBuilder, RepoBuilder},
     Config, ConfigLevel, FetchOptions, RemoteCallbacks,
 };
-pub fn download_repo(path: &str, uri: &str, sender: &mut Sender<(String, String, usize, usize)>) {
+
+pub enum GitPhase {
+    Fetch,
+    DeltaResolve,
+    Checkout,
+}
+
+pub fn download_repo(path: &str, uri: &str, sender: &mut Sender<(GitPhase, String, usize, usize)>) {
     let mut co = CheckoutBuilder::new();
     co.progress(|_, cur, total| {
         sender
-            .send(("co".to_string(), uri.to_string(), cur, total))
+            .send((GitPhase::Checkout, uri.to_string(), cur, total))
             .unwrap();
     });
 
@@ -17,7 +24,7 @@ pub fn download_repo(path: &str, uri: &str, sender: &mut Sender<(String, String,
         if deltas > 0 {
             sender
                 .send((
-                    "do".to_string(),
+                    GitPhase::DeltaResolve,
                     uri.to_string(),
                     stats.indexed_deltas(),
                     stats.total_deltas(),
@@ -26,7 +33,7 @@ pub fn download_repo(path: &str, uri: &str, sender: &mut Sender<(String, String,
         } else {
             sender
                 .send((
-                    "fo".to_string(),
+                    GitPhase::Fetch,
                     uri.to_string(),
                     stats.received_objects(),
                     stats.total_objects(),

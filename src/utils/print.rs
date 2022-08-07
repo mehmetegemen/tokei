@@ -1,17 +1,18 @@
 use std::{collections::HashMap, io::Write};
 
-pub fn print_dl_progress(progress: &HashMap<String, (String, usize)>) {
+use super::dl::GitPhase;
+
+pub fn print_dl_progress(progress: &HashMap<String, (GitPhase, usize)>) {
     let mut lines: Vec<String> = vec![];
 
     progress.iter().for_each(|(k, v)| {
-        match (v.0.as_str(), v.1) {
-            ("co", 100) => lines.push(format!("{k} => +Checkout Completed\n")),
-            ("co", _) => lines.push(format!("{k} => ^Checking out {}%\n", v.1)),
-            ("fo", 100) => lines.push(format!("{k} => +Fetched \n")),
-            ("fo", _) => lines.push(format!("{k} => @Fetching {}%\n", v.1)),
-            ("do", 100) => lines.push(format!("{k} => +Resolved Deltas\n")),
-            ("do", _) => lines.push(format!("{k} => #Resolving Deltas {}%\n", v.1)),
-            (_, _) => lines.push(format!("{k} => (o.O) Undefined Behavior {}%\n", v.1)),
+        match (&v.0, v.1) {
+            (GitPhase::Fetch, 100) => lines.push(format!("{k} => +Fetched \n")),
+            (GitPhase::Fetch, _) => lines.push(format!("{k} => @Fetching {progress}%\n", progress = v.1)),
+            (GitPhase::DeltaResolve, 100) => lines.push(format!("{k} => +Resolved Deltas\n")),
+            (GitPhase::DeltaResolve, _) => lines.push(format!("{k} => #Resolving Deltas {progress}%\n", progress = v.1)),
+            (GitPhase::Checkout, 100) => lines.push(format!("{k} => +Checkout Completed\n")),
+            (GitPhase::Checkout, _) => lines.push(format!("{k} => ^Checking out {progress}%\n", progress = v.1)),
         }
     });
 

@@ -10,7 +10,7 @@ use std::{collections::HashMap, error::Error, process};
 
 use input::is_git;
 use tokei::{Config, Language, LanguageType, Languages, Sort};
-use utils::{dl::download_repo, print::print_dl_progress};
+use utils::{dl::{download_repo, GitPhase}, print::print_dl_progress};
 
 use std::io;
 
@@ -41,9 +41,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut input = cli.input();
     let mut remote_inputs: Vec<String> = vec![];
 
-    let (remote_tx, remote_rx) = crossbeam_channel::unbounded::<(String, String, usize, usize)>();
+    let (remote_tx, remote_rx) = crossbeam_channel::unbounded::<(GitPhase, String, usize, usize)>();
 
     if let Ok(paths) = create_repo_dl_path(&input) {
+        // When there is a pre-existing folder, it can cause a bug to hang
         std::fs::remove_dir_all(std::path::Path::new("/tmp/tokei"))?;
 
         rayon::scope(|scope| {
