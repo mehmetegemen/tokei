@@ -4,10 +4,7 @@ use ignore::{overrides::OverrideBuilder, DirEntry, WalkBuilder, WalkState::Conti
 
 use rayon::prelude::*;
 
-use crate::{
-    config::Config,
-    language::{Language, LanguageType},
-};
+use crate::{Config, Language, LanguageType};
 
 const IGNORE_FILE: &str = ".tokeignore";
 
@@ -131,10 +128,7 @@ mod tests {
     use tempfile::TempDir;
 
     use super::IGNORE_FILE;
-    use crate::{
-        config::Config,
-        language::{languages::Languages, LanguageType},
-    };
+    use crate::{Config, LanguageType, Languages};
 
     const FILE_CONTENTS: &[u8] = &*b"fn main() {}";
     const FILE_NAME: &str = "main.rs";
