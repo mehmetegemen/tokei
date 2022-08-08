@@ -10,7 +10,10 @@ use std::{collections::HashMap, error::Error, process};
 
 use input::is_git;
 use tokei::{Config, Language, LanguageType, Languages, Sort};
-use utils::{dl::{download_repo, GitPhase}, print::print_dl_progress};
+use utils::{
+    dl::{download_repo, GitPhase},
+    print::print_dl_progress,
+};
 
 use std::io;
 

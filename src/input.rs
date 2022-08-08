@@ -209,13 +209,14 @@ pub fn create_repo_dl_path(input: &[&str]) -> Result<Vec<(String, String)>, ()> 
         .iter()
         .filter(|uri| is_git(uri))
         .map(|repo_url| {
-            let v = repo_url.split("/")
-            .collect::<Vec<&str>>()
-            .into_iter()
-            .rev()
-            .take(2)
-            .collect::<Vec<&str>>();
-            
+            let v = repo_url
+                .split("/")
+                .collect::<Vec<&str>>()
+                .into_iter()
+                .rev()
+                .take(2)
+                .collect::<Vec<&str>>();
+
             let (repo_name, user) = (
                 v[0].trim_end_matches(".git"),
                 v[1].trim_start_matches("git@github.com:"),
@@ -246,7 +247,9 @@ pub fn create_repo_dl_path(input: &[&str]) -> Result<Vec<(String, String)>, ()> 
 
 pub fn is_git(uri: &str) -> bool {
     // TODO: Check remote repo's validity with libgit
-    uri.contains("git@") || uri.contains("https://github.com") || uri.contains("https://www.github.com")
+    uri.contains("git@")
+        || uri.contains("https://github.com")
+        || uri.contains("https://www.github.com")
 }
 
 #[cfg(test)]
@@ -260,15 +263,13 @@ mod tests {
 
     mod git_repo_paths {
         use super::create_repo_dl_path;
-        use std::path::Path;
         use std::fs::remove_dir_all;
+        use std::path::Path;
 
         #[test]
         fn single_url_wo_www_is_successful() {
             // Create a single https input url without www
-            let input = vec![
-                "https://github.com/user/repo",
-            ];
+            let input = vec!["https://github.com/user/repo"];
 
             // Create dirs and get dir paths
             let dir = create_repo_dl_path(&input).unwrap();
@@ -279,8 +280,6 @@ mod tests {
 
             // Check if the directory is created
             assert!(Path::new(&dir[0].0).is_dir());
-
-            
         }
 
         #[test]
@@ -299,8 +298,6 @@ mod tests {
             assert_eq!(dir[0].1, input[0]);
             assert_eq!(dir[1].0, "/tmp/tokei/repo__another_user");
             assert_eq!(dir[1].1, input[1]);
-
-            
         }
 
         #[test]
@@ -321,8 +318,6 @@ mod tests {
 
             // Check if url to temproray directory conversion is correct
             assert_eq!(dir.len(), 2);
-
-            
         }
 
         #[test]
@@ -334,16 +329,12 @@ mod tests {
             let dir = create_repo_dl_path(&input);
 
             assert!(dir.is_err());
-
-            
         }
-        
+
         #[test]
         fn ssh_is_successful() {
             // Create a single https input url without www
-            let input = vec![
-                "git@github.com:user/repo.git"
-            ];
+            let input = vec!["git@github.com:user/repo.git"];
 
             // Create dirs and get dir paths
             let dir = create_repo_dl_path(&input).unwrap();
@@ -351,8 +342,6 @@ mod tests {
             // Check if url to temproray directory conversion is correct
             assert_eq!(dir[0].0, "/tmp/tokei/repo__user");
             assert_eq!(dir[0].1, input[0]);
-
-            
         }
 
         fn teardown() {
