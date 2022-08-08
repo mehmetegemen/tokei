@@ -41,7 +41,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut input = cli.input();
     let mut remote_inputs: Vec<String> = vec![];
 
-    let (remote_tx, remote_rx) = crossbeam_channel::unbounded::<(GitPhase, String, usize, usize)>();
+    let (remote_tx, remote_rx) = crossbeam_channel::unbounded::<(GitPhase, String)>();
 
     if let Ok(paths) = create_repo_dl_path(&input) {
         // When there is a pre-existing folder, it can cause a bug to hang
@@ -70,8 +70,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             // recv() is blocking
             scope.spawn(move |_| {
                 let mut progress = HashMap::new();
-                while let Ok((op_code, uri, cur, total)) = remote_rx.recv() {
-                    progress.insert(uri, (op_code, cur * 100 / total));
+                while let Ok((phase, uri)) = remote_rx.recv() {
+                    progress.insert(uri, phase);
 
                     print_dl_progress(&progress);
                 }

@@ -5,16 +5,16 @@ use git2::{
 };
 
 pub enum GitPhase {
-    Fetch,
-    DeltaResolve,
-    Checkout,
+    Fetch(usize, usize),
+    DeltaResolve(usize, usize),
+    Checkout(usize, usize),
 }
 
-pub fn download_repo(path: &str, uri: &str, sender: &mut Sender<(GitPhase, String, usize, usize)>) {
+pub fn download_repo(path: &str, uri: &str, sender: &mut Sender<(GitPhase, String)>) {
     let mut co = CheckoutBuilder::new();
     co.progress(|_, cur, total| {
         sender
-            .send((GitPhase::Checkout, uri.to_string(), cur, total))
+            .send((GitPhase::Checkout(cur, total), uri.to_string()))
             .unwrap();
     });
 
@@ -24,19 +24,15 @@ pub fn download_repo(path: &str, uri: &str, sender: &mut Sender<(GitPhase, Strin
         if deltas > 0 {
             sender
                 .send((
-                    GitPhase::DeltaResolve,
+                    GitPhase::DeltaResolve(stats.indexed_deltas(), stats.total_deltas()),
                     uri.to_string(),
-                    stats.indexed_deltas(),
-                    stats.total_deltas(),
                 ))
                 .unwrap();
         } else {
             sender
                 .send((
-                    GitPhase::Fetch,
+                    GitPhase::Fetch(stats.received_objects(), stats.total_objects()),
                     uri.to_string(),
-                    stats.received_objects(),
-                    stats.total_objects(),
                 ))
                 .unwrap();
         }
