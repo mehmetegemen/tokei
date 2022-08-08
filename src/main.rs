@@ -84,6 +84,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         // Pass it to lang stat
     } else {
         for path in &input {
+            println!("debug {}", path);
             if ::std::fs::metadata(path).is_err() && !is_git(path) {
                 eprintln!("Error: '{}' not found.", path);
                 process::exit(1);
@@ -168,9 +169,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     printer.print_total(&languages)?;
-
-    // Don't leave any artifacts
-    std::fs::remove_dir_all(std::path::Path::new("/tmp/tokei"))?;
 
     Ok(())
 }
