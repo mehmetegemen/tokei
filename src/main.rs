@@ -84,7 +84,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         // Pass it to lang stat
     } else {
         for path in &input {
-            if ::std::fs::metadata(path).is_err() {
+            if ::std::fs::metadata(path).is_err() && !is_git(path) {
                 eprintln!("Error: '{}' not found.", path);
                 process::exit(1);
             }
