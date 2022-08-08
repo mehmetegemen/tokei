@@ -10,7 +10,7 @@ pub enum GitPhase {
     Checkout(usize, usize),
 }
 
-pub fn download_repo(path: &str, uri: &str, sender: &mut Sender<(GitPhase, String)>) {
+pub fn download_repo<T: AsRef<str> + ToString>(path: T, uri: T, sender: &mut Sender<(GitPhase, String)>) {
     let mut co = CheckoutBuilder::new();
     co.progress(|_, cur, total| {
         sender
@@ -45,6 +45,6 @@ pub fn download_repo(path: &str, uri: &str, sender: &mut Sender<(GitPhase, Strin
     RepoBuilder::new()
         .with_checkout(co)
         .fetch_options(fo)
-        .clone(uri, std::path::Path::new(path))
-        .expect(&format!("Could not clone {}", uri));
+        .clone(uri.as_ref(), std::path::Path::new(path.as_ref()))
+        .expect(&format!("Could not clone {}", uri.as_ref()));
 }

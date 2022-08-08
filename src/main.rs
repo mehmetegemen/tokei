@@ -56,7 +56,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 remote_inputs.push(path.clone());
 
                 scope.spawn(move |_| {
-                    download_repo(path.as_str(), uri.as_str(), &mut sender);
+                    download_repo(path, uri, &mut sender);
                 });
             }
 
